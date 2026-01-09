@@ -11,7 +11,7 @@ const positionalArgs = args.filter(arg => !arg.startsWith("--"));
 const TOKEN = positionalArgs[0];
 const ORG_NAME = positionalArgs[1];
 const REPO_NAME = positionalArgs[2];
-const TARGET_BRANCH = positionalArgs[3] || "main";
+const TARGET_BRANCH = positionalArgs[3]; // Si no se envía, toma todas
 
 if (!TOKEN || !ORG_NAME || !REPO_NAME) {
   console.error("Uso: npm run start <TOKEN> <ORG_NAME> <REPO_NAME> [TARGET_BRANCH] [--csv]");
@@ -33,7 +33,7 @@ async function getDevBranchMetrics() {
   const query = `
         query($owner: String!, $name: String!) {
           repository(owner: $owner, name: $name) {
-            pullRequests(states: MERGED, last: 100, orderBy: {field: CREATED_AT, direction: DESC}) {
+            pullRequests(states: MERGED, last: 50, orderBy: {field: CREATED_AT, direction: DESC}) {
               nodes {
                 number
                 title
@@ -43,6 +43,9 @@ async function getDevBranchMetrics() {
                 createdAt
                 mergedAt
                 baseRefName
+                commits {
+                  totalCount
+                }
               }
             }
           }
@@ -55,21 +58,22 @@ async function getDevBranchMetrics() {
       name: REPO_NAME,
     });
 
-    // Filtramos solo los que fueron dirigidos a la rama 'dev'
-    const devPrs = repository.pullRequests.nodes.filter(
-      pr => pr.baseRefName === TARGET_BRANCH
+    // Filtramos por rama si se especificó una, de lo contrario tomamos todas
+    const filteredPrs = repository.pullRequests.nodes.filter(
+      pr => !TARGET_BRANCH || pr.baseRefName === TARGET_BRANCH
     );
 
-    if (devPrs.length === 0) {
+    if (filteredPrs.length === 0) {
       console.log(`No se encontraron PRs mergeados hacia la rama "${TARGET_BRANCH}".`);
       return;
     }
 
     let totalDiffInMs = 0;
 
-    console.log(`--- Reporte de PRs mergeados a: ${TARGET_BRANCH} ---`);
+    const branchLabel = TARGET_BRANCH || "TODAS LAS RAMAS";
+    console.log(`--- Reporte de PRs mergeados a: ${branchLabel} ---`);
 
-    devPrs.forEach(pr => {
+    filteredPrs.forEach(pr => {
       const start = new Date(pr.createdAt);
       const end = new Date(pr.mergedAt);
       const diffInMs = end - start;
@@ -77,25 +81,28 @@ async function getDevBranchMetrics() {
 
       const diffInHours = (diffInMs / (1000 * 60 * 60)).toFixed(2);
       const author = pr.author?.login || "Desconocido";
-      console.log(`[${pr.baseRefName}] #${pr.number} "${pr.title}" por @${author} | Tiempo: ${diffInHours}h`);
+      const commits = pr.commits?.totalCount || 0;
+      console.log(`[${pr.baseRefName}] #${pr.number} "${pr.title}" por @${author} | Tiempo: ${diffInHours}h | Commits: ${commits}`);
     });
 
-    const averageHours = (totalDiffInMs / devPrs.length / (1000 * 60 * 60)).toFixed(2);
+    const averageHours = (totalDiffInMs / filteredPrs.length / (1000 * 60 * 60)).toFixed(2);
 
     console.log("------------------------------------------");
-    console.log(`PRs analizados: ${devPrs.length}`);
-    console.log(`TIEMPO PROMEDIO A "${TARGET_BRANCH}": ${averageHours} horas`);
+    console.log(`PRs analizados: ${filteredPrs.length}`);
+    console.log(`TIEMPO PROMEDIO A "${branchLabel}": ${averageHours} horas`);
     console.log("------------------------------------------");
 
     if (EXPORT_CSV) {
-      const fileName = `pr_metrics_${REPO_NAME}_${TARGET_BRANCH}.csv`;
-      const header = "Número,Título,Autor,Rama,Fecha Creación,Fecha Merge,Tiempo (horas)\n";
-      const rows = devPrs.map(pr => {
+      const branchSuffix = TARGET_BRANCH || "todas_las_ramas";
+      const fileName = `pr_metrics_${REPO_NAME}_${branchSuffix}.csv`;
+      const header = "Número,Título,Autor,Rama,Fecha Creación,Fecha Merge,Tiempo (horas),Commits\n";
+      const rows = filteredPrs.map(pr => {
         const start = new Date(pr.createdAt);
         const end = new Date(pr.mergedAt);
         const diffInHours = ((end - start) / (1000 * 60 * 60)).toFixed(2);
         const author = pr.author?.login || "Desconocido";
-        return `${pr.number},"${pr.title.replace(/"/g, '""')}",${author},${pr.baseRefName},${pr.createdAt},${pr.mergedAt},${diffInHours}`;
+        const commits = pr.commits?.totalCount || 0;
+        return `${pr.number},"${pr.title.replace(/"/g, '""')}",${author},${pr.baseRefName},${pr.createdAt},${pr.mergedAt},${diffInHours},${commits}`;
       }).join("\n");
 
       fs.writeFileSync(fileName, header + rows);
