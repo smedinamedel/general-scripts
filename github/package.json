@@ -1,0 +1,14 @@
+{
+  "name": "general-scripts",
+  "version": "1.0.0",
+  "description": "Scripts para análisis de métricas de GitHub",
+  "main": "github/pull-requests-times.js",
+  "scripts": {
+    "start": "node pull-requests-times.js"
+  },
+  "dependencies": {
+    "@octokit/graphql": "^8.1.1"
+  },
+  "author": "",
+  "license": "ISC"
+}
