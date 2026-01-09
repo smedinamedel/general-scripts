@@ -1,19 +1,26 @@
 const { graphql } = require("@octokit/graphql");
+const fs = require("fs");
 
 // Los parámetros serán tomados de los argumentos de la línea de comandos
 const args = process.argv.slice(2);
+const EXPORT_CSV = args.includes("--csv");
 
-// Mapeo rudimentario de argumentos o uso de posiciones
-// Esperamos: TOKEN ORG_NAME REPO_NAME TARGET_BRANCH
-const TOKEN = args[0];
-const ORG_NAME = args[1];
-const REPO_NAME = args[2];
-const TARGET_BRANCH = args[3] || "main";
+// Filtramos los flags para quedarnos con los argumentos posicionales
+const positionalArgs = args.filter(arg => !arg.startsWith("--"));
+
+const TOKEN = positionalArgs[0];
+const ORG_NAME = positionalArgs[1];
+const REPO_NAME = positionalArgs[2];
+const TARGET_BRANCH = positionalArgs[3] || "main";
 
 if (!TOKEN || !ORG_NAME || !REPO_NAME) {
-  console.error("Uso: npm run start <TOKEN> <ORG_NAME> <REPO_NAME> [TARGET_BRANCH]");
-  console.error("Ejemplo: npm run start ghp_abc my-org my-repo dev");
+  console.error("Uso: npm run start <TOKEN> <ORG_NAME> <REPO_NAME> [TARGET_BRANCH] [--csv]");
+  console.error("Ejemplo: npm run start ghp_abc my-org my-repo dev --csv");
   process.exit(1);
+}
+
+if (EXPORT_CSV) {
+  console.log("Exportación a CSV habilitada.");
 }
 
 async function getDevBranchMetrics() {
@@ -79,6 +86,21 @@ async function getDevBranchMetrics() {
     console.log(`PRs analizados: ${devPrs.length}`);
     console.log(`TIEMPO PROMEDIO A "${TARGET_BRANCH}": ${averageHours} horas`);
     console.log("------------------------------------------");
+
+    if (EXPORT_CSV) {
+      const fileName = `pr_metrics_${REPO_NAME}_${TARGET_BRANCH}.csv`;
+      const header = "Número,Título,Autor,Rama,Fecha Creación,Fecha Merge,Tiempo (horas)\n";
+      const rows = devPrs.map(pr => {
+        const start = new Date(pr.createdAt);
+        const end = new Date(pr.mergedAt);
+        const diffInHours = ((end - start) / (1000 * 60 * 60)).toFixed(2);
+        const author = pr.author?.login || "Desconocido";
+        return `${pr.number},"${pr.title.replace(/"/g, '""')}",${author},${pr.baseRefName},${pr.createdAt},${pr.mergedAt},${diffInHours}`;
+      }).join("\n");
+
+      fs.writeFileSync(fileName, header + rows);
+      console.log(`\nDatos exportados a: ${fileName}`);
+    }
 
   } catch (error) {
     console.error("Error al consultar la API:", error.message);

@@ -18,10 +18,10 @@ Este script calcula el tiempo promedio que tardan los Pull Requests en ser merge
 
 ## Uso
 
-Puedes ejecutar el script usando `npm run start` seguido de los parámetros requeridos:
+Para ejecutar el script y pasarle los parámetros, debes usar el separador `--` después de `npm run start`. Esto le indica a npm que los siguientes argumentos deben pasarse directamente al script de Node.js.
 
 ```bash
-npm run start <TOKEN> <ORG_NAME> <REPO_NAME> [TARGET_BRANCH]
+npm run start -- <TOKEN> <ORG_NAME> <REPO_NAME> [TARGET_BRANCH] [--csv]
 ```
 
 ### Parámetros
@@ -30,11 +30,12 @@ npm run start <TOKEN> <ORG_NAME> <REPO_NAME> [TARGET_BRANCH]
 - `ORG_NAME`: El nombre de la organización o usuario propietario del repositorio.
 - `REPO_NAME`: El nombre del repositorio.
 - `TARGET_BRANCH` (Opcional): La rama de destino de los PRs (por defecto es `main`).
+- `--csv` (Opcional): Si se incluye, exporta los resultados a un archivo CSV en cualquier posición.
 
 ### Ejemplo
 
 ```bash
-npm run start ghp_your_token_here my-organization my-awesome-repo dev
+npm run start -- ghp_your_token_here my-organization my-awesome-repo dev --csv
 ```
 
 ## Salida
