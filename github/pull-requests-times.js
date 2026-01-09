@@ -46,6 +46,9 @@ async function getDevBranchMetrics() {
                 commits {
                   totalCount
                 }
+                reviewThreads(first: 100) {
+                  totalCount
+                }
               }
             }
           }
@@ -82,7 +85,8 @@ async function getDevBranchMetrics() {
       const diffInHours = (diffInMs / (1000 * 60 * 60)).toFixed(2);
       const author = pr.author?.login || "Desconocido";
       const commits = pr.commits?.totalCount || 0;
-      console.log(`[${pr.baseRefName}] #${pr.number} "${pr.title}" por @${author} | Tiempo: ${diffInHours}h | Commits: ${commits}`);
+      const reviewComments = pr.reviewThreads?.totalCount || 0;
+      console.log(`[${pr.baseRefName}] #${pr.number} "${pr.title}" por @${author} | Tiempo: ${diffInHours}h | Commits: ${commits} | Reviews: ${reviewComments}`);
     });
 
     const averageHours = (totalDiffInMs / filteredPrs.length / (1000 * 60 * 60)).toFixed(2);
@@ -95,14 +99,15 @@ async function getDevBranchMetrics() {
     if (EXPORT_CSV) {
       const branchSuffix = TARGET_BRANCH || "todas_las_ramas";
       const fileName = `pr_metrics_${REPO_NAME}_${branchSuffix}.csv`;
-      const header = "Número,Título,Autor,Rama,Fecha Creación,Fecha Merge,Tiempo (horas),Commits\n";
+      const header = "Número,Título,Autor,Rama,Fecha Creación,Fecha Merge,Tiempo (horas),Commits,Reviews\n";
       const rows = filteredPrs.map(pr => {
         const start = new Date(pr.createdAt);
         const end = new Date(pr.mergedAt);
         const diffInHours = ((end - start) / (1000 * 60 * 60)).toFixed(2);
         const author = pr.author?.login || "Desconocido";
         const commits = pr.commits?.totalCount || 0;
-        return `${pr.number},"${pr.title.replace(/"/g, '""')}",${author},${pr.baseRefName},${pr.createdAt},${pr.mergedAt},${diffInHours},${commits}`;
+        const reviewComments = pr.reviewThreads?.totalCount || 0;
+        return `${pr.number},"${pr.title.replace(/"/g, '""')}",${author},${pr.baseRefName},${pr.createdAt},${pr.mergedAt},${diffInHours},${commits},${reviewComments}`;
       }).join("\n");
 
       fs.writeFileSync(fileName, header + rows);

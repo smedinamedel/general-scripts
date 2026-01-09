@@ -1,6 +1,12 @@
 # GitHub Pull Request Metrics
 
-Este script calcula el tiempo promedio que tardan los Pull Requests en ser mergeados a una rama específica.
+Este script calcula el **Lead Time for Changes** (específicamente el **Time to Merge**), que es el tiempo promedio que tardan los Pull Requests en ser mergeados a una rama específica.
+
+## Métrica Obtenida
+
+La métrica principal calculada es el **Mean Time to Merge (MTTM)**:
+- **Definición:** El intervalo de tiempo desde que se abre un PR hasta que se realiza el merge.
+- **Importancia:** Es un indicador clave de la agilidad del equipo y la eficiencia del proceso de code review. Un MTTM bajo suele indicar un proceso de integración fluido y rápido.
 
 ## Requisitos
 
